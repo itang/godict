@@ -1,0 +1,6 @@
+hash: 9c7adae42841071b43f1ca40700f50e329cbb6ea28fbd4edecf571558c879cd5
+updated: 2016-07-16T16:58:35.008557132+08:00
+imports:
+- name: github.com/itang/gotang
+  version: ed2690f761a37d67edf4ae3e311b2b532ba37099
+testImports: []

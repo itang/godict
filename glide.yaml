@@ -1,0 +1,3 @@
+package: godict
+import:
+- package: github.com/itang/gotang
