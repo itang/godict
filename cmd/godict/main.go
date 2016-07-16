@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/itang/godict"
-	"log"
 )
 
 func main() {
