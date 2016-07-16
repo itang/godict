@@ -50,15 +50,17 @@ func (t Translator163) extract(content string) (string, error) {
 
 	content = content[start:]
 	start = strings.Index(content, "<li>")
-	if start <= 0 {
+	if start < 0 {
 		return "", errors.New("error2")
 	}
 
-	start = start + len("<li>")
-
 	content = content[start:]
+
+	start = len("<li>")
+	content = content[start:]
+
 	end := strings.Index(content, "</li>")
-	if end <= 0 {
+	if end < 0 {
 		return "", errors.New("error3")
 	}
 
