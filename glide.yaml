@@ -1,3 +1,7 @@
-package: godict
+package: github.com/itang/godict
 import:
 - package: github.com/itang/gotang
+- package: github.com/fatih/color
+  version: ^1.0.0
+- package: github.com/pkg/errors
+  version: ^0.7.0

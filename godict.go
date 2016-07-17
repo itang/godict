@@ -2,10 +2,10 @@ package godict
 
 import (
 	"fmt"
-
-	"errors"
-	"github.com/itang/gotang"
 	"strings"
+
+	"github.com/itang/gotang"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -36,7 +36,7 @@ func (t Translator163) Translate(from Word, to Lang) (string, error) {
 
 	content, err := gotang.HttpGetAsString(url)
 	if err != nil {
-		return "", errors.New("请求163翻译服务出错:" + err.Error())
+		return "", errors.Wrapf(err, "请求163翻译服务出错, url: %v", url)
 	}
 
 	return t.extract(content)
@@ -45,13 +45,13 @@ func (t Translator163) Translate(from Word, to Lang) (string, error) {
 func (t Translator163) extract(content string) (string, error) {
 	start := strings.Index(content, "trans-container")
 	if start <= 0 {
-		return "", errors.New("error1")
+		return "", t.parseHtmlError("无法定位trans-container")
 	}
 
 	content = content[start:]
 	start = strings.Index(content, "<li>")
 	if start < 0 {
-		return "", errors.New("error2")
+		return "", t.parseHtmlError("无法定位<li>")
 	}
 
 	content = content[start:]
@@ -61,8 +61,13 @@ func (t Translator163) extract(content string) (string, error) {
 
 	end := strings.Index(content, "</li>")
 	if end < 0 {
-		return "", errors.New("error3")
+		return "", t.parseHtmlError("无法定位</li>")
 	}
 
 	return content[:end], nil
+}
+
+func (t Translator163) parseHtmlError(s string) error {
+	return errors.Errorf(`解析html出错了, %v.
+	 请确认是否输入了不存在的单词`)
 }
