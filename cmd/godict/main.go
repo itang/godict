@@ -29,13 +29,13 @@ func main() {
 		return
 	}
 
-	fmt.Println(">", color.BlueString(ret))
+	fmt.Printf("\t->: %s\n", color.BlueString(ret))
 
 	tryPostToCloud(word, ret)
 }
 
 func tryPostToCloud(from, to string) {
-	fmt.Println("\nPost to cloud...")
+	fmt.Println("\ntry post to cloud...")
 	gotang.Time(func() {
 		done := make(chan Result)
 		timer := time.NewTimer(time.Millisecond * 2000)
@@ -47,7 +47,7 @@ func tryPostToCloud(from, to string) {
 			value := ret.okOrElse(func(err error) interface{} {
 				return err.Error()
 			})
-			fmt.Printf(" -> response: %v\n", value)
+			fmt.Printf("\t->: %v\n", value)
 		case <-timer.C:
 			fmt.Println("timeout...")
 		}
