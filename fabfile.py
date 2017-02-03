@@ -36,3 +36,9 @@ def fmt():
     pkgs = ['github.com/itang/godict/cmd/godict', 'github.com/itang/godict']
     for pkg in pkgs:
         local('go fmt {}'.format(pkg))
+
+
+def install():
+    """install"""
+    local('go install github.com/itang/godict/cmd/godict')
+
