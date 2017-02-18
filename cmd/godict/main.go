@@ -34,8 +34,15 @@ func main() {
 	tryPostToCloud(word, ret)
 }
 
+const MAX_TO_CHARS = 100
+
 func tryPostToCloud(from, to string) {
 	fmt.Println("\ntry post to cloud...")
+	if len(to) > MAX_TO_CHARS {
+		fmt.Printf("INFO: Too large content(%v bytes), ignore post.\n", len(to))
+		return
+	}
+
 	gotang.Time(func() {
 		done := make(chan Result)
 		timer := time.NewTimer(time.Millisecond * 2000)
