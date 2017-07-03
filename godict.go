@@ -90,9 +90,16 @@ func (t *TangcloudDictRecorder) Record(from Word, to Word) {
 	tryPostToCloud(t.UpstreamURL, from.W, to.W)
 }
 
+const MAX_TO_CHARS = 100
+
 //TODO: 超时机制使用context.Context
 func tryPostToCloud(upstreamURL, from, to string) {
 	fmt.Printf("\ntry post to cloud: %s...\n", upstreamURL)
+	if len(to) > MAX_TO_CHARS {
+		fmt.Printf("INFO: Too large content(%v bytes), ignore post.\n", len(to))
+		return
+	}
+
 	done := make(chan Result)
 	gotang.Time(func() {
 		timer := time.NewTimer(time.Millisecond * 2000)
