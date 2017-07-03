@@ -1,19 +1,20 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
-	"time"
+	"os/user"
 
-	"github.com/iris-contrib/color"
+	"github.com/BurntSushi/toml"
+	"github.com/fatih/color"
 	"github.com/itang/godict"
-	"github.com/itang/gotang"
 	"github.com/pkg/errors"
 )
+
+type config struct {
+	UpstreamURL string `toml:"upstream_url"`
+}
 
 func main() {
 	word, err := parseWordFromArgs()
@@ -30,33 +31,29 @@ func main() {
 	}
 
 	fmt.Printf("\t->: %s\n", color.BlueString(ret))
+	upstreamURL, err := getUpstreamURL()
+	if err != nil {
+		upstreamURL = "http://www.godocking.com/api/dict/log"
+	}
 
-	tryPostToCloud(word, ret)
+	var record godict.Record = &godict.TangcloudDictRecorder{UpstreamURL: upstreamURL}
+	record.Record(godict.Word{W: word, L: godict.LANG_EN}, godict.Word{W: ret, L: godict.LANG_CN})
 }
 
-func tryPostToCloud(from, to string) {
-	fmt.Println("\ntry post to cloud...")
-	gotang.Time(func() {
-		done := make(chan Result)
-		timer := time.NewTimer(time.Millisecond * 2000)
-
-		go httpPostAsString("http://dict.godocking.com/api/dict/logs", postRequest{From: from, To: to}, done)
-
-		select {
-		case ret := <-done:
-			value := ret.okOrElse(func(err error) interface{} {
-				return err.Error()
-			})
-			fmt.Printf("\t->: %v\n", value)
-		case <-timer.C:
-			fmt.Println("timeout...")
-		}
-	})
-}
-
-type postRequest struct {
-	From string `json:"from"`
-	To   string `json:"to"`
+func getUpstreamURL() (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", nil
+	}
+	tomlData, err := ioutil.ReadFile(usr.HomeDir + "/.rdict/config.toml") // just pass the file name
+	if err != nil {
+		return "", nil
+	}
+	var conf config
+	if _, err := toml.Decode(string(tomlData), &conf); err != nil {
+		return "", err
+	}
+	return conf.UpstreamURL, nil
 }
 
 func parseWordFromArgs() (string, error) {
@@ -66,40 +63,4 @@ func parseWordFromArgs() (string, error) {
 
 	word := os.Args[1]
 	return word, nil
-}
-
-func httpPostAsString(url string, req postRequest, done chan Result) {
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(req)
-	resp, err := http.Post(url, "application/json; charset=utf-8", &buf)
-	if err != nil {
-		done <- Result{nil, err}
-		return
-	}
-
-	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		done <- Result{nil, err}
-		return
-	}
-
-	done <- Result{string(content), nil}
-}
-
-// Result type
-type Result struct {
-	Value interface{}
-	Err   error
-}
-
-func (ret Result) flat() (interface{}, error) {
-	return ret.Value, ret.Err
-}
-
-func (ret Result) okOrElse(f func(err error) interface{}) interface{} {
-	if ret.Err != nil {
-		return f(ret.Err)
-	}
-	return ret.Value
 }

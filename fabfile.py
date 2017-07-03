@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from fabric.api import *
+from fabric.api import local 
 
 
 def run():
@@ -11,7 +11,7 @@ def run():
 def dev():
     """dev"""
     # https://github.com/tockins/realize
-    local('realize fast')
+    local('realize run')
 
 
 def repl():
@@ -41,4 +41,3 @@ def fmt():
 def install():
     """install"""
     local('go install github.com/itang/godict/cmd/godict')
-
