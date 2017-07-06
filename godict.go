@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	LANG_EN = iota
-	LANG_CN
+	LangEn = iota
+	LangCn
 )
 
 type Lang int
@@ -30,11 +30,13 @@ type Translator interface {
 }
 
 type Record interface {
-	Record(from Word, to Word)
+	Record(from Word, to Word) (ret string, err error)
 }
 
 type Translator163 struct {
 }
+
+var _ Translator = (*Translator163)(nil)
 
 func (t Translator163) Translate(from Word, to Lang) (string, error) {
 	url := fmt.Sprintf("http://dict.youdao.com/search?q=%v&keyfrom=dict.index", from.W)
@@ -73,49 +75,46 @@ func (t Translator163) extract(content string) (string, error) {
 }
 
 func (t Translator163) parseHtmlError(s string) error {
-	return errors.Errorf(`解析html出错了, %v.
-	 请确认是否输入了不存在的单词`)
+	return errors.Errorf(`解析html出错了:%v, 请确认是否输入了不存在的单词`, s)
 }
 
 type TangcloudDictRecorder struct {
 	UpstreamURL string
 }
 
-func (t *TangcloudDictRecorder) Record(from Word, to Word) {
-	if from.L != LANG_EN || to.L != LANG_CN {
+var _ Record = (*TangcloudDictRecorder)(nil)
+
+func (t *TangcloudDictRecorder) Record(from Word, to Word) (ret string, err error) {
+	if from.L != LangEn || to.L != LangCn {
 		fmt.Printf("不支持的from %d or to %d lang", from.L, to.L)
 		return
 	}
 
-	tryPostToCloud(t.UpstreamURL, from.W, to.W)
+	return tryPostToCloud(t.UpstreamURL, from.W, to.W)
 }
 
-const MAX_TO_CHARS = 100
+const MaxChars = 99
 
 //TODO: 超时机制使用context.Context
-func tryPostToCloud(upstreamURL, from, to string) {
+func tryPostToCloud(upstreamURL, from, to string) (ret string, err error) {
 	fmt.Printf("\ntry post to cloud: %s...\n", upstreamURL)
-	if len(to) > MAX_TO_CHARS {
+
+	if len(to) > MaxChars {
 		fmt.Printf("INFO: Too large content(%v bytes), ignore post.\n", len(to))
 		return
 	}
 
+	timer := time.NewTimer(time.Millisecond * 2000)
 	done := make(chan Result)
-	gotang.Time(func() {
-		timer := time.NewTimer(time.Millisecond * 2000)
+	go httpPostAsString(upstreamURL /*"s"*/, postRequest{From: from, To: to}, done)
 
-		go httpPostAsString(upstreamURL /*"s"*/, postRequest{From: from, To: to}, done)
-
-		select {
-		case ret := <-done:
-			value := ret.okOrElse(func(err error) interface{} {
-				return err.Error()
-			})
-			fmt.Printf("\t->: %v\n", value)
-		case <-timer.C:
-			fmt.Println("timeout...")
-		}
-	})
+	select {
+	case ret := <-done:
+		value, err := ret.flat()
+		return value.(string), err
+	case <-timer.C:
+		return "", errors.New("timeout")
+	}
 }
 
 type postRequest struct {
