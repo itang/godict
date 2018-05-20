@@ -37,13 +37,13 @@ func main() {
 		upstreamURL = "http://www.godocking.com/api/dict/log"
 	}
 
-	var record godict.Record = &godict.TangcloudDictRecorder{UpstreamURL: upstreamURL}
+	var record godict.Record = &godict.TangCloudDictRecorder{UpstreamURL: upstreamURL}
 	gotang.Time(func() {
 		ret, err := record.Record(godict.Word{W: word, L: godict.LangEn}, godict.Word{W: ret, L: godict.LangCn})
 		if err != nil {
 			fmt.Printf("Error: %v\n", err.Error())
 		} else {
-			fmt.Printf("\t->: %v\n", ret)
+			fmt.Printf("\t|>: %v\n", ret)
 		}
 	})
 }

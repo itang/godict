@@ -11,6 +11,7 @@ import (
 
 	"github.com/itang/gotang"
 	"github.com/pkg/errors"
+	"net"
 )
 
 const (
@@ -78,13 +79,13 @@ func (t Translator163) parseHtmlError(s string) error {
 	return errors.Errorf(`解析html出错了:%v, 请确认是否输入了不存在的单词`, s)
 }
 
-type TangcloudDictRecorder struct {
+type TangCloudDictRecorder struct {
 	UpstreamURL string
 }
 
-var _ Record = (*TangcloudDictRecorder)(nil)
+var _ Record = (*TangCloudDictRecorder)(nil)
 
-func (t *TangcloudDictRecorder) Record(from Word, to Word) (ret string, err error) {
+func (t *TangCloudDictRecorder) Record(from Word, to Word) (ret string, err error) {
 	if from.L != LangEn || to.L != LangCn {
 		fmt.Printf("不支持的from %d or to %d lang", from.L, to.L)
 		return
@@ -97,24 +98,14 @@ const MaxChars = 99
 
 //TODO: 超时机制使用context.Context
 func tryPostToCloud(upstreamURL, from, to string) (ret string, err error) {
-	fmt.Printf("\ntry post to cloud: %s...\n", upstreamURL)
+	fmt.Printf("\ntry post to cloud: %s ...\n", upstreamURL)
 
 	if len(to) > MaxChars {
 		fmt.Printf("INFO: Too large content(%v bytes), ignore post.\n", len(to))
 		return
 	}
 
-	timer := time.NewTimer(time.Millisecond * 2000)
-	done := make(chan Result)
-	go httpPostAsString(upstreamURL /*"s"*/, postRequest{From: from, To: to}, done)
-
-	select {
-	case ret := <-done:
-		value, err := ret.flat()
-		return value.(string), err
-	case <-timer.C:
-		return "", errors.New("timeout")
-	}
+	return httpPostAsString(upstreamURL, postRequest{From: from, To: to})
 }
 
 type postRequest struct {
@@ -122,38 +113,30 @@ type postRequest struct {
 	To   string `json:"to"`
 }
 
-func httpPostAsString(url string, req postRequest, done chan Result) {
+func httpPostAsString(url string, req postRequest) (content string, err error) {
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(req)
-	resp, err := http.Post(url, "application/json; charset=utf-8", &buf)
+	var netTransport = &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout: 5 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 5 * time.Second,
+	}
+	var netClient = &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: netTransport, //避免连接复用!!
+	}
+
+	resp, err := netClient.Post(url, "application/json; charset=utf-8", &buf)
 	if err != nil {
-		done <- Result{nil, err}
-		return
+		return "", err
 	}
 
 	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
+	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		done <- Result{nil, err}
-		return
+		return "", err
 	}
 
-	done <- Result{string(content), nil}
-}
-
-// Result type
-type Result struct {
-	Value interface{}
-	Err   error
-}
-
-func (ret Result) flat() (interface{}, error) {
-	return ret.Value, ret.Err
-}
-
-func (ret Result) okOrElse(f func(err error) interface{}) interface{} {
-	if ret.Err != nil {
-		return f(ret.Err)
-	}
-	return ret.Value
+	return string(c), nil
 }
