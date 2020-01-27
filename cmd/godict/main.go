@@ -34,7 +34,14 @@ func main() {
 
 	upstreamURL, err := getUpstreamURL()
 	if err != nil {
-		upstreamURL = "http://www.godocking.com/api/dict/log"
+		//upstreamURL = "http://www.godocking.com/api/dict/log"
+		fmt.Printf("read post url config from %v error: %v\n", configFilePath(), err)
+		return
+	}
+
+	if upstreamURL == "" {
+		fmt.Printf("\n\t%s\n", color.RedString("read config url config from %v, got empty, ignore to post\n", configFilePath()))
+		return
 	}
 
 	var record godict.Record = &godict.TangCloudDictRecorder{UpstreamURL: upstreamURL}
@@ -49,14 +56,9 @@ func main() {
 }
 
 func getUpstreamURL() (string, error) {
-	usr, err := user.Current()
+	tomlData, err := ioutil.ReadFile(configFilePath()) // just pass the file name
 	if err != nil {
-		return "", nil
-	}
-
-	tomlData, err := ioutil.ReadFile(usr.HomeDir + "/.rdict/config.toml") // just pass the file name
-	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	var conf config
@@ -74,4 +76,13 @@ func parseWordFromArgs() (string, error) {
 
 	word := os.Args[1]
 	return word, nil
+}
+
+func configFilePath() string {
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
+	return usr.HomeDir + "/.rdict/config.toml"
 }
